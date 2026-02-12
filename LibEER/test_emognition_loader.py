@@ -314,9 +314,6 @@ def main():
 Examples:
   python test_emognition_loader.py --dataset_path /data/emognition
   python test_emognition_loader.py --dataset_path "E:/Datasets/Emognition"
-  
-For Kaggle:
-  python test_emognition_loader.py --dataset_path /kaggle/input/emognition
         """
     )
     
