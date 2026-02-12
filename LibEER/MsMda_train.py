@@ -193,6 +193,17 @@ def main(args):
     print("  FINAL RESULTS - CROSS-SUBJECT EVALUATION")
     print("="*80)
     
+    # Check if we have any results
+    if len(best_metrics) == 0:
+        print("\n❌ ERROR: No training results collected!")
+        print("   This could mean:")
+        print("   - Not enough subjects in the dataset")
+        print("   - Data loading failed")
+        print("   - Split configuration issue")
+        print("\n💡 Try running the test script first:")
+        print(f"   python test_emognition_loader.py -dataset_path {args.dataset_path}")
+        return
+    
     avg_metrics = {}
     for metric_name in best_metrics[0].keys():
         values = [m[metric_name] for m in best_metrics]
