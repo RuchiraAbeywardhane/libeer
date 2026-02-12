@@ -231,29 +231,17 @@ if __name__ == "__main__":
     # Get arguments
     parser = get_args_parser()
     
-    # Add MS-MDA specific arguments
-    parser.add_argument('--dataset_path', type=str, required=True,
-                        help='Path to Emognition dataset')
-    parser.add_argument('--output_dir', type=str, default='./results/msmda_emognition',
-                        help='Directory to save results')
-    
     args = parser.parse_args()
     
     # Set default values for Emognition
     args.dataset = 'emognition'
     args.experiment_mode = 'cross-subject'  # MS-MDA is designed for cross-subject
     
-    # Default hyperparameters (can be overridden via command line)
-    if not hasattr(args, 'epochs') or args.epochs is None:
+    # Set defaults if not provided
+    if args.epochs is None or args.epochs == 40:  # default from parser
         args.epochs = 50
-    if not hasattr(args, 'batch_size') or args.batch_size is None:
+    if args.batch_size is None or args.batch_size == 128:  # default from parser
         args.batch_size = 64
-    if not hasattr(args, 'lr') or args.lr is None:
-        args.lr = 0.001
-    if not hasattr(args, 'device') or args.device is None:
-        args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    if not hasattr(args, 'seed') or args.seed is None:
-        args.seed = 2024
     
     # Create output directory
     os.makedirs(args.output_dir, exist_ok=True)

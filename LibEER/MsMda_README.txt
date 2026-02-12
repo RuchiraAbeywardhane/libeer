@@ -14,26 +14,22 @@ STEP 3: Train MS-MDA model
 ---------------------------
 
 BASIC USAGE:
-python MsMda_train.py --dataset_path /path/to/emognition
+python MsMda_train.py -dataset_path /path/to/emognition
 
 ADVANCED USAGE (customize hyperparameters):
-python MsMda_train.py \
-    --dataset_path /path/to/emognition \
-    --epochs 100 \
-    --batch_size 32 \
-    --lr 0.0005 \
-    --seed 2024 \
-    --output_dir ./results/msmda_custom
+python MsMda_train.py -dataset_path /path/to/emognition -epochs 100 -batch_size 32 -lr 0.0005 -seed 2024 -output_dir ./results/msmda_custom
+
+IMPORTANT: Use single dash (-) not double dash (--)!
 
 AVAILABLE PARAMETERS:
 ---------------------
---dataset_path    : Path to Emognition dataset (REQUIRED)
---epochs          : Number of training epochs (default: 50)
---batch_size      : Batch size for training (default: 64)
---lr              : Learning rate (default: 0.001)
---seed            : Random seed for reproducibility (default: 2024)
---output_dir      : Directory to save results (default: ./results/msmda_emognition)
---device          : Device to use: 'cuda' or 'cpu' (auto-detected)
+-dataset_path    : Path to Emognition dataset (REQUIRED)
+-epochs          : Number of training epochs (default: 50)
+-batch_size      : Batch size for training (default: 64)
+-lr              : Learning rate (default: 0.001)
+-seed            : Random seed for reproducibility (default: 1)
+-output_dir      : Directory to save results (default: ./result/)
+-device          : Device to use: 'cuda', 'cuda:0', or 'cpu' (default: cuda)
 
 WHAT THE SCRIPT DOES:
 --------------------
@@ -65,25 +61,29 @@ TIPS:
 ----
 1. Start with default parameters first
 2. If accuracy is low, try:
-   - Increasing epochs (e.g., --epochs 100)
-   - Adjusting learning rate (e.g., --lr 0.0005)
-   - Using a smaller batch size (e.g., --batch_size 32)
+   - Increasing epochs (e.g., -epochs 100)
+   - Adjusting learning rate (e.g., -lr 0.0005)
+   - Using a smaller batch size (e.g., -batch_size 32)
 3. Training time depends on number of subjects and epochs
 4. GPU is recommended for faster training
+
+EXAMPLE COMMANDS:
+----------------
+
+1. Quick test run (fewer epochs):
+python MsMda_train.py -dataset_path /kaggle/input/emognition -epochs 10
+
+2. Full training with GPU:
+python MsMda_train.py -dataset_path /kaggle/input/emognition -epochs 100 -device cuda
+
+3. Custom configuration:
+python MsMda_train.py -dataset_path /kaggle/input/emognition -epochs 80 -batch_size 32 -lr 0.0003
+
+4. With custom output directory:
+python MsMda_train.py -dataset_path /kaggle/input/emognition -output_dir ./my_results
 
 For questions or issues, refer to the MS-MDA paper:
 Chen H, Jin M, Li Z, et al. "MS-MDA: Multisource marginal distribution 
 adaptation for cross-subject and cross-session EEG emotion recognition"
 Frontiers in Neuroscience, 2021.
 """
-
-# Example commands for different scenarios:
-
-# 1. Quick test run (fewer epochs)
-# python MsMda_train.py --dataset_path /path/to/emognition --epochs 10
-
-# 2. Full training with GPU
-# python MsMda_train.py --dataset_path /path/to/emognition --epochs 100 --device cuda
-
-# 3. Custom configuration
-# python MsMda_train.py --dataset_path /path/to/emognition --epochs 80 --batch_size 32 --lr 0.0003
