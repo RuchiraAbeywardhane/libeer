@@ -212,7 +212,7 @@ def main(args):
                 samples_source=total_source_samples,
                 device=device,
                 output_dir=output_dir,
-                metrics=['acc', 'f1'],
+                metrics=['acc', 'macro-f1'],  # Changed 'f1' to 'macro-f1'
                 metric_choose='acc',
                 optimizer=optimizer,
                 scheduler=None,
@@ -225,7 +225,7 @@ def main(args):
             
             print(f"\n✅ Subject {subject_idx} Fold {fold_idx} completed!")
             print(f"   Test Accuracy: {metric_value['acc']:.2f}%")
-            print(f"   Test F1-Score: {metric_value['f1']:.2f}%")
+            print(f"   Test F1-Score: {metric_value['macro-f1']:.2f}%")  # Changed 'f1' to 'macro-f1'
     
     # Calculate average metrics
     print("\n" + "="*80)

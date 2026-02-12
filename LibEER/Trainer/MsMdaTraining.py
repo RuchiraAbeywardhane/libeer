@@ -1,6 +1,5 @@
 import torch
 from torch.utils.data import DataLoader,RandomSampler, SequentialSampler
-from tqdm import tqdm
 import torch.nn.functional as F
 import torch.nn as nn
 
@@ -37,14 +36,16 @@ def train(model, datasets_train, dataset_val, dataset_test, samples_source, devi
     source_iters = []
     for i in range(len(source_loaders)):
         source_iters.append(iter(source_loaders[i]))
+    
+    print(f"\n   Starting training with {epochs} epochs, {iteration} iterations per epoch")
+    
     for epoch in range(epochs):
-        _tqdm = tqdm(range(iteration), desc= f"Train Epoch {epoch  + 1}/{epochs}",leave=False)
-        #, colour='red' position=2,, desc= f"Train Epoch {epoch + args.resume_epoch + 1}/{args.epochs}",
-        for idx in _tqdm:
-            model.train()
+        print(f"\n   Epoch {epoch + 1}/{epochs}")
+        model.train()
+        epoch_losses = []
+        
+        for idx in range(iteration):
             # the optimizer for train
-            # optimizer = torch.optim.Adam(
-            #         model.parameters(), lr=LEARNING_RATE)
             for j in range(len(source_iters)):
                 try:
                     source_data, source_label = next(source_iters[j])
@@ -60,7 +61,6 @@ def train(model, datasets_train, dataset_val, dataset_test, samples_source, devi
                 target_data = target_data.to(device)
 
                 optimizer.zero_grad()
-                # print(source_data.shape, target_data.shape, source_label.shape, len(source_loaders), j)
                 cls_loss, mmd_loss, l1_loss = model(source_data, number_of_source=len(source_loaders),
                                                          data_tgt=target_data, label_src=source_label, mark=j)
                 gamma = 2 / (1 + math.exp(-10 * (epoch*iteration+idx) / (iterations))) - 1
@@ -68,19 +68,35 @@ def train(model, datasets_train, dataset_val, dataset_test, samples_source, devi
                 loss = cls_loss + gamma * mmd_loss + beta * l1_loss
                 loss.backward()
                 optimizer.step()
-                _tqdm.set_postfix_str(f"loss: {loss.item():.2f}")
-            metric_value = evaluate(model, data_loader_val, device, metrics, nn.NLLLoss(), source_num=len(source_loaders))
-            for m in metrics:
+                epoch_losses.append(loss.item())
+            
+            # Print progress every 10% of iterations
+            if (idx + 1) % max(1, iteration // 10) == 0:
+                avg_loss = sum(epoch_losses) / len(epoch_losses)
+                progress = (idx + 1) / iteration * 100
+                print(f"      Progress: {progress:.0f}% | Avg Loss: {avg_loss:.4f}")
+        
+        # Evaluate at end of epoch
+        print(f"      Evaluating...")
+        metric_value = evaluate(model, data_loader_val, device, metrics, nn.NLLLoss(), source_num=len(source_loaders))
+        
+        for m in metrics:
             # if metric is the best, save the model state
-                if metric_value[m] > best_metric[m]:
-                    best_metric[m] = metric_value[m]
-                    save_state(output_dir, model, optimizer, epoch + 1, metric=m)
+            if metric_value[m] > best_metric[m]:
+                best_metric[m] = metric_value[m]
+                save_state(output_dir, model, optimizer, epoch + 1, metric=m)
+                print(f"      ✓ New best {m}: {metric_value[m]:.2f}%")
+    
+    print(f"\n   Loading best model and evaluating on test set...")
     model.load_state_dict(torch.load(f"{output_dir}/checkpoint-best{metric_choose}")['model'])
     metric_value = evaluate(model, data_loader_test, device, metrics, criterion, source_num=len(source_loaders))
+    
     # print best metrics
+    print(f"\n   Final Results:")
     for m in metrics:
-        print(f"best_val_{m}: {best_metric[m]:.2f}")
-        print(f"best_test_{m}: {metric_value[m]:.2f}")
+        print(f"      Best Val {m}: {best_metric[m]:.2f}%")
+        print(f"      Test {m}: {metric_value[m]:.2f}%")
+    
     return metric_value
 
 @torch.no_grad()
@@ -88,9 +104,11 @@ def evaluate(model, data_loader_test, device, metrics, criterion, source_num, lo
     model.eval()
     # create Metric object
     metric = Metric(metrics)
-    for idx, (data, target) in tqdm(enumerate(data_loader_test), total=len(data_loader_test),
-                                    desc=f"Evaluating : ", leave=False):
-        # ,, position=1
+    
+    total_batches = len(data_loader_test)
+    print(f"         Evaluating {total_batches} batches...", end=" ")
+    
+    for idx, (data, target) in enumerate(data_loader_test):
         data = data.to(device)
         target = target.to(device)
         preds = model(data, source_num)
@@ -98,10 +116,11 @@ def evaluate(model, data_loader_test, device, metrics, criterion, source_num, lo
         for i in range(len(preds)):
             preds[i] = F.softmax(preds[i], dim=1)
 
-        pred = sum(preds) / len(preds)  # 经过len(preds)个源域后预测的平均值
-        test_loss = criterion(F.log_softmax(pred,
-                                             dim=1), target.long().squeeze())
+        pred = sum(preds) / len(preds)
+        test_loss = criterion(F.log_softmax(pred, dim=1), target.long().squeeze())
 
         metric.update(torch.argmax(pred, dim=1), target.data.squeeze(), test_loss.item())
-    print("\033[34m eval state: " + metric.value())
+    
+    result = metric.value()
+    print(f"Done! | {result}")
     return metric.values
