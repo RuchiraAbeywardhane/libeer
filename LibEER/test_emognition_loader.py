@@ -1,68 +1,4 @@
 """
-KAGGLE NOTEBOOK SETUP FOR EMOGNITION DATASET LOADER TEST
-=========================================================
-
-Run these commands in a Kaggle notebook cell:
-
-STEP 1: Install dependencies (if needed)
------------------------------------------
-!pip install mne scipy tqdm pandas numpy xmltodict mat73
-
-STEP 2: Navigate to LibEER directory
--------------------------------------
-%cd /kaggle/working/LibEER/LibEER
-
-STEP 3: Run the test script
-----------------------------
-!python test_emognition_loader.py --dataset_path /kaggle/input/emognition
-
-ALTERNATIVE: If dataset is in a different location
----------------------------------------------------
-!python test_emognition_loader.py --dataset_path /kaggle/input/your-dataset-name
-
-
-FULL KAGGLE NOTEBOOK SETUP
-===========================
-Copy and paste this into a Kaggle notebook cell:
-"""
-
-# Cell 1: Install dependencies
-print("Installing dependencies...")
-!pip install -q mne scipy tqdm pandas numpy xmltodict mat73
-
-# Cell 2: Navigate to LibEER directory
-import os
-os.chdir('/kaggle/working/LibEER/LibEER')
-print(f"Current directory: {os.getcwd()}")
-
-# Cell 3: Run the test
-!python test_emognition_loader.py --dataset_path /kaggle/input/emognition
-
-"""
-QUICK SETUP (Single Cell)
-===========================
-If you want to run everything in one cell:
-"""
-
-# Install, navigate, and run test in one go
-!pip install -q mne scipy tqdm pandas numpy xmltodict mat73 && \
-cd /kaggle/working/LibEER/LibEER && \
-python test_emognition_loader.py --dataset_path /kaggle/input/emognition
-
-"""
-NOTES:
-------
-1. Replace 'emognition' with your actual Kaggle dataset name
-2. If your dataset is uploaded as 'emognition-eeg-dataset', use:
-   --dataset_path /kaggle/input/emognition-eeg-dataset
-
-3. To check available datasets, run:
-   !ls /kaggle/input/
-
-4. Make sure your LibEER code is uploaded to Kaggle or cloned from GitHub
-"""
-
-"""
 Test script for Emognition dataset loader
 ==========================================
 This script tests the Emognition data loader to ensure it's working correctly.
@@ -378,6 +314,9 @@ def main():
 Examples:
   python test_emognition_loader.py --dataset_path /data/emognition
   python test_emognition_loader.py --dataset_path "E:/Datasets/Emognition"
+  
+For Kaggle:
+  python test_emognition_loader.py --dataset_path /kaggle/input/emognition
         """
     )
     
