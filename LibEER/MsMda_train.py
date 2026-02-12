@@ -62,12 +62,13 @@ def main(args):
         stride=1,
         seed=args.seed,
         feature_type='de_lds',  # Differential Entropy with LDS smoothing
-        experiment_mode=args.experiment_mode,  # "cross-subject" for MS-MDA
+        experiment_mode='subject-independent',  # Changed from 'cross-subject' - this is what merge_to_part expects
         split_type='train-val-test',
         test_size=0.2,
         val_size=0.2,
         label_used=['valence'],  # Can be changed based on your needs
-        onehot=False
+        onehot=False,
+        cross_trail='false'  # Important for MS-MDA
     )
     
     # Load and preprocess data
@@ -260,7 +261,8 @@ if __name__ == "__main__":
     
     # Set default values for Emognition
     args.dataset = 'emognition'
-    args.experiment_mode = 'cross-subject'  # MS-MDA is designed for cross-subject
+    # Note: We use 'subject-independent' internally, but it's cross-subject training (MS-MDA)
+    args.experiment_mode = 'subject-independent'
     
     # Set defaults if not provided
     if args.epochs is None or args.epochs == 40:  # default from parser
