@@ -83,6 +83,20 @@ def main(args):
     # Merge data according to experiment mode
     data, label = merge_to_part(data, label, setting)
     
+    # Debug: Check what we got after merge
+    print(f"\n🔍 Debug Info:")
+    print(f"   Type of data: {type(data)}")
+    print(f"   Length of data: {len(data)}")
+    if len(data) > 0:
+        print(f"   Type of data[0]: {type(data[0])}")
+        print(f"   Length of data[0]: {len(data[0])}")
+        if len(data[0]) > 0:
+            print(f"   Type of data[0][0]: {type(data[0][0])}")
+            if hasattr(data[0][0], '__len__'):
+                print(f"   Length of data[0][0]: {len(data[0][0])}")
+    print(f"   Type of label: {type(label)}")
+    print(f"   Length of label: {len(label)}")
+    
     # Storage for results
     best_metrics = []
     
