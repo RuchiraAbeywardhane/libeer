@@ -21,6 +21,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from torch.utils.data import TensorDataset
+from collections import Counter
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -32,6 +33,52 @@ from models.MsMda import MSMDA
 from Trainer.MsMdaTraining import train
 from utils.args import get_args_parser
 from utils.utils import setup_seed
+
+
+def compute_class_weights(labels, num_classes=4):
+    """
+    Compute class weights to handle imbalanced data.
+    Gives higher weight to minority classes.
+    
+    Args:
+        labels: All training labels
+        num_classes: Number of classes
+    
+    Returns:
+        torch.Tensor: Class weights for loss function
+    """
+    # Flatten labels if needed
+    if isinstance(labels[0], (list, np.ndarray)):
+        flat_labels = []
+        for label_list in labels:
+            flat_labels.extend(label_list)
+    else:
+        flat_labels = labels
+    
+    # Count samples per class
+    label_counts = Counter(flat_labels)
+    
+    print(f"\n   📊 Class Distribution:")
+    for class_id in range(num_classes):
+        count = label_counts.get(class_id, 0)
+        percentage = (count / len(flat_labels)) * 100
+        print(f"      Class {class_id}: {count:4d} samples ({percentage:5.2f}%)")
+    
+    # Calculate weights: inverse frequency
+    total_samples = len(flat_labels)
+    weights = []
+    for class_id in range(num_classes):
+        count = label_counts.get(class_id, 1)  # Avoid division by zero
+        weight = total_samples / (num_classes * count)
+        weights.append(weight)
+    
+    weights = torch.FloatTensor(weights)
+    
+    print(f"\n   ⚖️  Class Weights (higher = more important):")
+    for class_id, weight in enumerate(weights):
+        print(f"      Class {class_id}: {weight:.3f}")
+    
+    return weights
 
 
 def main(args):
@@ -152,8 +199,12 @@ def main(args):
             train_data, train_label, val_data, val_label, test_data, test_label = \
                 index_to_data(data_i, label_i, train_indexes, test_indexes, val_indexes)
             
+            # Compute class weights from training data to handle imbalance
+            print(f"\n   🔧 Computing class weights for imbalanced data...")
+            class_weights = compute_class_weights(train_label, num_classes=num_classes)
+            class_weights = class_weights.to(device)
+            
             # For MS-MDA: each training subject is a "source domain"
-            # Prepare multiple source datasets
             datasets_train = []
             samples_per_source = []
             
@@ -195,8 +246,9 @@ def main(args):
                 weight_decay=1e-4
             )
             
-            # Setup loss
-            criterion = nn.NLLLoss()
+            # Setup loss with class weights
+            criterion = nn.NLLLoss(weight=class_weights)
+            print(f"   ✅ Using weighted loss to handle class imbalance")
             
             # Output directory
             output_dir = f"{args.output_dir}/subject_{subject_idx}_fold_{fold_idx}"
