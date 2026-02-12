@@ -2,10 +2,10 @@
 Emotion Correlation Analysis for Emognition Dataset
 ====================================================
 
-This script analyzes correlations between the 11 emotions in the Emognition dataset
+This script analyzes correlations between the 10 emotions in the Emognition dataset
 to identify which emotions are most similar/correlated based on EEG features.
 
-The 11 emotions in Emognition are:
+The 10 emotions in Emognition are:
 1. AMUSEMENT (Positive, Active)
 2. ENTHUSIASM (Positive, Active)
 3. AWE (Positive, Active)
@@ -15,8 +15,7 @@ The 11 emotions in Emognition are:
 7. SADNESS (Negative, Calm)
 8. SURPRISE (Negative, Calm)
 9. LIKING (Positive, Calm)
-10. TENDERNESS (Positive, Calm)
-11. NEUTRAL
+10. NEUTRAL
 
 Usage:
     python analyze_emotion_correlation.py --dataset_path /path/to/emognition
@@ -71,13 +70,12 @@ def analyze_emotion_correlations(dataset_path):
         "SADNESS": 6,
         "SURPRISE": 7,
         "LIKING": 8,
-        "TENDERNESS": 9,
-        "NEUTRAL": 10
+        "NEUTRAL": 9
     }
     
     EMOTION_NAMES = list(EMOTIONS.keys())
     
-    print("📊 Analyzing 11 emotions:")
+    print("📊 Analyzing 10 emotions:")
     for i, emotion in enumerate(EMOTION_NAMES, 1):
         print(f"   {i:2d}. {emotion}")
     
@@ -211,10 +209,15 @@ def analyze_emotion_correlations(dataset_path):
         if len(emotion_data[emotion]) > 0:
             emotion_features[emotion] = np.mean(emotion_data[emotion], axis=0)
         else:
-            emotion_features[emotion] = np.zeros(28)  # 4 channels × 7 features
+            # Skip emotions with no data
+            print(f"   ⚠️  Warning: {emotion} has no samples, skipping...")
+            continue
     
-    # Create feature matrix (11 emotions × features)
-    feature_matrix = np.array([emotion_features[emotion] for emotion in EMOTION_NAMES])
+    # Create feature matrix (only for emotions with data)
+    available_emotions = [e for e in EMOTION_NAMES if e in emotion_features]
+    feature_matrix = np.array([emotion_features[emotion] for emotion in available_emotions])
+    
+    print(f"   ✅ Created feature matrix for {len(available_emotions)} emotions")
     
     # Compute correlation matrix (Pearson)
     print("\n📈 Computing Pearson correlation matrix...")
@@ -226,14 +229,14 @@ def analyze_emotion_correlations(dataset_path):
     print("  CORRELATION MATRIX (Pearson)")
     print("="*80)
     print("\n           ", end="")
-    for i, emotion in enumerate(EMOTION_NAMES):
+    for i, emotion in enumerate(available_emotions):
         print(f"{emotion[:6]:>7s}", end="")
     print()
     print("-" * 80)
     
-    for i, emotion in enumerate(EMOTION_NAMES):
+    for i, emotion in enumerate(available_emotions):
         print(f"{emotion:11s}", end="")
-        for j in range(len(EMOTION_NAMES)):
+        for j in range(len(available_emotions)):
             corr = correlation_matrix[i, j]
             if i == j:
                 print(f"  1.000", end="")
@@ -247,11 +250,11 @@ def analyze_emotion_correlations(dataset_path):
     print("="*80)
     
     correlations = []
-    for i in range(len(EMOTION_NAMES)):
-        for j in range(i+1, len(EMOTION_NAMES)):
+    for i in range(len(available_emotions)):
+        for j in range(i+1, len(available_emotions)):
             correlations.append({
-                'emotion1': EMOTION_NAMES[i],
-                'emotion2': EMOTION_NAMES[j],
+                'emotion1': available_emotions[i],
+                'emotion2': available_emotions[j],
                 'correlation': correlation_matrix[i, j]
             })
     
@@ -320,27 +323,33 @@ def analyze_emotion_correlations(dataset_path):
     print("   Q0 (Positive, Active): AMUSEMENT, ENTHUSIASM, AWE")
     print("   Q1 (Negative, Active): ANGER, FEAR, DISGUST")
     print("   Q2 (Negative, Calm):   SADNESS, SURPRISE")
-    print("   Q3 (Positive, Calm):   LIKING, TENDERNESS")
+    print("   Q3 (Positive, Calm):   LIKING")
+    print("   Note: NEUTRAL is not assigned to any quadrant")
     
     # Compute average correlations within quadrants
     quadrants = {
         'Q0': ['AMUSEMENT', 'ENTHUSIASM', 'AWE'],
         'Q1': ['ANGER', 'FEAR', 'DISGUST'],
         'Q2': ['SADNESS', 'SURPRISE'],
-        'Q3': ['LIKING', 'TENDERNESS']
+        'Q3': ['LIKING']  # Only LIKING, TENDERNESS doesn't exist
     }
     
     print("\n📊 Within-Quadrant Correlation (higher = better grouping):")
     
     for quad_name, emotions in quadrants.items():
         if len(emotions) > 1:
-            indices = [EMOTION_NAMES.index(e) for e in emotions]
-            within_corrs = []
-            for i in range(len(indices)):
-                for j in range(i+1, len(indices)):
-                    within_corrs.append(correlation_matrix[indices[i], indices[j]])
-            avg_corr = np.mean(within_corrs)
-            print(f"   {quad_name}: {avg_corr:.3f}  ({', '.join(emotions)})")
+            # Check if all emotions in this quadrant are available
+            available_quad_emotions = [e for e in emotions if e in available_emotions]
+            if len(available_quad_emotions) > 1:
+                indices = [available_emotions.index(e) for e in available_quad_emotions]
+                within_corrs = []
+                for i in range(len(indices)):
+                    for j in range(i+1, len(indices)):
+                        within_corrs.append(correlation_matrix[indices[i], indices[j]])
+                avg_corr = np.mean(within_corrs)
+                print(f"   {quad_name}: {avg_corr:.3f}  ({', '.join(available_quad_emotions)})")
+        else:
+            print(f"   {quad_name}: N/A (only one emotion: {emotions[0]})")
     
     # Save results to file
     results_file = "emotion_correlation_analysis.txt"
@@ -362,13 +371,13 @@ def analyze_emotion_correlations(dataset_path):
         f.write("="*80 + "\n\n")
         
         f.write("           ")
-        for emotion in EMOTION_NAMES:
+        for emotion in available_emotions:
             f.write(f"{emotion[:6]:>7s}")
         f.write("\n")
         
-        for i, emotion in enumerate(EMOTION_NAMES):
+        for i, emotion in enumerate(available_emotions):
             f.write(f"{emotion:11s}")
-            for j in range(len(EMOTION_NAMES)):
+            for j in range(len(available_emotions)):
                 f.write(f"  {correlation_matrix[i, j]:5.2f}")
             f.write("\n")
         
@@ -392,7 +401,7 @@ def analyze_emotion_correlations(dataset_path):
     
     return {
         'correlation_matrix': correlation_matrix,
-        'emotion_names': EMOTION_NAMES,
+        'emotion_names': available_emotions,
         'top_pairs': correlations[:20],
         'groups': groups
     }
