@@ -81,6 +81,30 @@ def main(args):
     print(f"   Classes: {num_classes} (Emotion quadrants)")
     print(f"   Total feature dimension: {channels * feature_dim}")
     
+    # CRITICAL FIX: Flatten the channel and feature dimensions for MS-MDA
+    # MS-MDA expects input shape: (samples, channels * features)
+    # Current shape: (session, subject, trial, sample, channel, feature)
+    # Need to reshape to: (session, subject, trial, sample, channel*feature)
+    
+    print(f"\n🔧 Reshaping data for MS-MDA...")
+    
+    # Flatten channel and feature dimensions
+    for ses_idx in range(len(data)):
+        for sub_idx in range(len(data[ses_idx])):
+            for trial_idx in range(len(data[ses_idx][sub_idx])):
+                trial_data = np.array(data[ses_idx][sub_idx][trial_idx])
+                # Current shape: (samples, channels, features)
+                # Target shape: (samples, channels*features)
+                original_shape = trial_data.shape
+                if len(original_shape) == 3:
+                    # Reshape from (samples, channels, features) to (samples, channels*features)
+                    flattened = trial_data.reshape(original_shape[0], -1)
+                    data[ses_idx][sub_idx][trial_idx] = flattened
+    
+    # Update feature_dim to reflect flattened features
+    total_feature_dim = channels * feature_dim
+    print(f"   ✅ Data reshaped: each sample now has {total_feature_dim} features")
+    
     # Merge data according to experiment mode
     data, label = merge_to_part(data, label, setting)
     
