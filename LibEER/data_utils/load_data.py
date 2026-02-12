@@ -42,7 +42,7 @@ available_dataset = [
     "seed_raw", "seediv_raw", "deap", "deap_raw", "hci", "dreamer", "seed_de", "seed_de_lds", "seed_psd", "seed_psd_lds", "seed_dasm", "seed_dasm_lds"
     , "seed_rasm", "seed_rasm_lds", "seed_asm", "seed_asm_lds", "seed_dcau", "seed_dcau_lds", "seediv_de_lds", "seediv_de_movingAve",
     "seediv_psd_movingAve", "seediv_psd_lds", "faced_de", "faced_psd", "faced_de_lds", "faced_psd_lds", "seedv_raw", "seedv_de", "mped_raw","mped_feature",
-    "mped_de_lds"
+    "mped_de_lds", "emognition"
 ]
 
 extract_dataset = {
@@ -69,7 +69,8 @@ def get_uniform_data(dataset, dataset_path):
         "mped_raw": read_mped_raw,
         "mped_feature": read_mped_feature,
         "mped_de_lds": read_mped_de_lds,
-        "hci": read_hci
+        "hci": read_hci,
+        "emognition": read_emognition
     }
     if dataset.startswith("seediv") and dataset != "seediv_raw":
         data, baseline, label, sample_rate, channels = read_seedIV_feature(dataset_path, feature_type=dataset[7:])
@@ -547,9 +548,9 @@ def read_deap_raw(dir_path):
     # input file : 32 bdf files contains 32 subjects' eeg data
     # output shape : (session(1), subject, trail, channel, raw_data), (session(1), subject, trail, label)
     # under data_original dir, it has 32.bdf file, each represent one subject
-    Geneva_ch_names = ['Fp1', 'AF3', 'F3', 'F7', 'FC5', 'FC1', 'C3', 'T7', 'CP5', 'CP1', 'P3', 'P7', 'PO3', 'O1',
-                'Oz', 'Pz', 'Fp2', 'AF4', 'Fz', 'F4', 'F8', 'FC6', 'FC2', 'Cz', 'C4', 'T8', 'CP6', 'CP2',
-                'P4', 'P8', 'PO4', 'O2']
+    Geneva_ch_names = ['Fp1', 'AF3', 'F3', 'F7', 'FC1', 'FC5', 'T7', 'C3', 'CP1', 'CP5', 'P7', 'P3', 'Pz',
+                       'PO3', 'O1', 'Oz', 'O2', 'PO4', 'P4', 'P8', 'CP6', 'CP2', 'C4', 'T8', 'FC6', 'FC2', 'F4',
+                       'F8', 'AF4', 'Fp2', 'Fz', 'Cz']
     Twente_ch_names = ['Fp1', 'AF3', 'F7', 'F3', 'FC1', 'FC5', 'T7', 'C3', 'CP1', 'CP5', 'P7', 'P3', 'Pz',
                        'PO3', 'O1', 'Oz', 'O2', 'PO4', 'P4', 'P8', 'CP6', 'CP2', 'C4', 'T8', 'FC6', 'FC2', 'F4',
                        'F8', 'AF4', 'Fp2', 'Fz', 'Cz']
@@ -684,4 +685,225 @@ def read_hci(dir_path):
     filter_d_l_b = [(d,l,b) for d,l,b in zip(data[0], labels[0], base[0]) if l != []]
     data[0], labels[0], base[0] = zip(*filter_d_l_b) if filter_d_l_b else ([],[],[])
     return data, base, labels, 128, 32
+
+def read_emognition(dir_path):
+    """
+    Read Emognition dataset with MUSE headband EEG data.
+    
+    Dataset details:
+    - 4-channel EEG: TP9, AF7, AF8, TP10
+    - Sampling rate: 256 Hz
+    - 9 emotions mapped to 4 quadrants
+    - JSON format files with naming: {subject_id}_{EMOTION}_STIMULUS_MUSE.json
+    
+    Output format:
+    - data: (session(1), subject, trial, channel(4), raw_data)
+    - baseline: None (no baseline in this dataset)
+    - label: (session(1), subject, trial) - quadrant labels (0-3)
+    - sample_rate: 256 Hz
+    - channels: 4
+    
+    :param dir_path: The directory path where Emognition dataset is stored
+    :return: data, baseline, label, sample_rate, channels
+    """
+    import glob
+    import json
+    
+    print("\n" + "="*80)
+    print("LOADING EMOGNITION DATASET (MUSE HEADBAND)")
+    print("="*80)
+    print(f"📂 Data root: {dir_path}")
+    
+    # Channel configuration
+    CHANNELS = ['TP9', 'AF7', 'AF8', 'TP10']
+    NUM_CHANNELS = 4
+    SAMPLING_RATE = 256.0
+    
+    # Emotion to quadrant mapping
+    EMOTION_TO_QUADRANT = {
+        "AMUSEMENT": 0,   # Q1: Positive, Active
+        "ENTHUSIASM": 0,
+        "AWE": 0,
+        "ANGER": 1,       # Q2: Negative, Active
+        "FEAR": 1,
+        "DISGUST": 1,
+        "SADNESS": 2,     # Q3: Negative, Calm
+        "SURPRISE": 2,
+        "LIKING": 3,      # Q4: Positive, Calm
+    }
+    
+    # Find all MUSE JSON files
+    search_patterns = [
+        os.path.join(dir_path, "*_STIMULUS_MUSE.json"),
+        os.path.join(dir_path, "*", "*_STIMULUS_MUSE.json"),
+        os.path.join(dir_path, "*", "*", "*_STIMULUS_MUSE.json")
+    ]
+    
+    all_files = set()
+    for pattern in search_patterns:
+        all_files.update(glob.glob(pattern))
+    
+    all_files = sorted(all_files)
+    
+    print(f"📁 Found {len(all_files)} MUSE JSON files")
+    
+    if len(all_files) == 0:
+        print("⚠️  WARNING: No MUSE JSON files found!")
+        print("   Expected file pattern: {subject_id}_{EMOTION}_STIMULUS_MUSE.json")
+        # Return empty data structure
+        return [[]], None, [[]], SAMPLING_RATE, NUM_CHANNELS
+    
+    # Helper functions
+    def _to_numeric(x):
+        """Convert input to numeric numpy array."""
+        if isinstance(x, list):
+            if not x:
+                return np.array([], dtype=np.float64)
+            if isinstance(x[0], str):
+                return pd.to_numeric(pd.Series(x), errors="coerce").to_numpy(dtype=np.float64)
+            return np.asarray(x, dtype=np.float64)
+        return np.asarray([x], dtype=np.float64)
+    
+    def _interpolate_nans(signal):
+        """Interpolate NaN values in signal."""
+        signal = signal.astype(np.float64, copy=True)
+        valid_mask = np.isfinite(signal)
+        
+        if valid_mask.all():
+            return signal
+        
+        if not valid_mask.any():
+            return np.zeros_like(signal)
+        
+        indices = np.arange(len(signal))
+        signal[~valid_mask] = np.interp(indices[~valid_mask], indices[valid_mask], signal[valid_mask])
+        
+        return signal
+    
+    # Group files by subject
+    subject_data_dict = {}
+    skipped_count = 0
+    
+    for file_path in tqdm(all_files, desc="Loading EEG files"):
+        filename = os.path.basename(file_path)
+        parts = filename.replace(".json", "").split("_")
+        
+        if len(parts) < 2:
+            skipped_count += 1
+            continue
+        
+        subject_id = parts[0]
+        emotion = parts[1].upper()
+        
+        # Check if emotion is valid
+        if emotion not in EMOTION_TO_QUADRANT:
+            skipped_count += 1
+            continue
+        
+        quadrant_label = EMOTION_TO_QUADRANT[emotion]
+        
+        try:
+            # Load JSON data
+            with open(file_path, 'r', encoding='utf-8') as f:
+                raw_data = json.load(f)
+            
+            # Extract raw EEG channels
+            channels_data = {
+                'TP9': _interpolate_nans(_to_numeric(raw_data.get('RAW_TP9', []))),
+                'AF7': _interpolate_nans(_to_numeric(raw_data.get('RAW_AF7', []))),
+                'AF8': _interpolate_nans(_to_numeric(raw_data.get('RAW_AF8', []))),
+                'TP10': _interpolate_nans(_to_numeric(raw_data.get('RAW_TP10', [])))
+            }
+            
+            # Check if we have data
+            if all(len(ch) == 0 for ch in channels_data.values()):
+                skipped_count += 1
+                continue
+            
+            # Get minimum length
+            min_length = min(len(ch) for ch in channels_data.values())
+            
+            # Stack channels into matrix (channels, samples)
+            signal = np.stack([
+                channels_data['TP9'][:min_length],
+                channels_data['AF7'][:min_length],
+                channels_data['AF8'][:min_length],
+                channels_data['TP10'][:min_length]
+            ], axis=0)
+            
+            # Remove DC offset
+            signal = signal - np.mean(signal, axis=1, keepdims=True)
+            
+            # Initialize subject data structure if needed
+            if subject_id not in subject_data_dict:
+                subject_data_dict[subject_id] = {
+                    'trials': [],
+                    'labels': []
+                }
+            
+            # Add trial data
+            subject_data_dict[subject_id]['trials'].append(signal)
+            subject_data_dict[subject_id]['labels'].append(quadrant_label)
+        
+        except Exception as e:
+            skipped_count += 1
+            continue
+    
+    # Convert to LibEER format: (session, subject, trial, channel, raw_data)
+    # We use 1 session for Emognition
+    
+    # Sort subjects for consistent ordering
+    sorted_subjects = sorted(subject_data_dict.keys())
+    
+    data = [[]]  # session(1)
+    labels = [[]]  # session(1)
+    
+    for subject_id in sorted_subjects:
+        subject_info = subject_data_dict[subject_id]
+        
+        # Add subject's trials
+        data[0].append(subject_info['trials'])
+        labels[0].append(subject_info['labels'])
+    
+    # Print summary
+    print("\n" + "="*80)
+    print("LOADING COMPLETE")
+    print("="*80)
+    
+    total_subjects = len(data[0])
+    total_trials = sum(len(labels[0][i]) for i in range(total_subjects))
+    
+    print(f"✅ Successfully loaded: {total_subjects} subjects")
+    print(f"📊 Total trials: {total_trials}")
+    print(f"⚠️  Skipped files: {skipped_count}")
+    
+    # Label distribution
+    all_labels_flat = [label for subject_labels in labels[0] for label in subject_labels]
+    from collections import Counter
+    label_counts = Counter(all_labels_flat)
+    
+    print(f"\n📈 Quadrant Distribution:")
+    quadrant_names = {0: "Q1 (Positive, Active)", 1: "Q2 (Negative, Active)", 
+                      2: "Q3 (Negative, Calm)", 3: "Q4 (Positive, Calm)"}
+    for q_id in sorted(label_counts.keys()):
+        count = label_counts[q_id]
+        q_name = quadrant_names.get(q_id, f"Q{q_id}")
+        print(f"   {q_name}: {count:3d} trials")
+    
+    print(f"\n👥 Subjects per quadrant:")
+    subject_primary_labels = []
+    for subject_labels in labels[0]:
+        # Get most common label for each subject
+        most_common = Counter(subject_labels).most_common(1)[0][0]
+        subject_primary_labels.append(most_common)
+    
+    subject_label_counts = Counter(subject_primary_labels)
+    for q_id in sorted(subject_label_counts.keys()):
+        count = subject_label_counts[q_id]
+        q_name = quadrant_names.get(q_id, f"Q{q_id}")
+        print(f"   {q_name}: {count:3d} subjects")
+    
+    print("="*80 + "\n")
+    
+    return data, None, labels, int(SAMPLING_RATE), NUM_CHANNELS
 
